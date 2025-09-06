@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckSquare, Calendar, Settings2, User } from 'lucide-react';
+import { CheckSquare, Calendar, Settings2, User, Sparkles } from 'lucide-react';
 import { VoiceInput } from '@/components/VoiceInput';
 import { TaskList } from '@/components/TaskList';
 import { CalendarView } from '@/components/CalendarView';
 import { Task, CalendarEvent } from '@/lib/types';
-import { LocalStorage } from '@/lib/storage';
+import { StorageService } from '@/lib/storage';
+import { ContextualReminderService } from '@/lib/reminders';
+import { AITaskPrioritizer } from '@/lib/ai-prioritization';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { Name, Avatar } from '@coinbase/onchainkit/identity';
+import { Toaster } from 'react-hot-toast';
 
 type ViewMode = 'voice' | 'tasks' | 'calendar';
 
@@ -18,6 +21,8 @@ export default function HomePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAIPrioritization, setShowAIPrioritization] = useState(false);
   const { setFrameReady } = useMiniKit();
 
   useEffect(() => {
@@ -25,9 +30,29 @@ export default function HomePage() {
   }, [setFrameReady]);
 
   useEffect(() => {
-    // Load data from localStorage on mount
-    setTasks(LocalStorage.getTasks());
-    setEvents(LocalStorage.getEvents());
+    // Initialize services and load data
+    const initializeApp = async () => {
+      try {
+        // Initialize reminder service
+        await ContextualReminderService.initialize();
+        
+        // Load data from storage
+        const [loadedTasks, loadedEvents] = await Promise.all([
+          StorageService.getTasks(),
+          StorageService.getEvents()
+        ]);
+        
+        setTasks(loadedTasks);
+        setEvents(loadedEvents);
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        setError('Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   const handleTaskAdded = (task: Task) => {
@@ -47,6 +72,47 @@ export default function HomePage() {
     setTimeout(() => setError(null), 5000);
   };
 
+  const handleAIPrioritization = async () => {
+    if (tasks.length === 0) {
+      setError('No tasks to prioritize');
+      return;
+    }
+
+    setShowAIPrioritization(true);
+    try {
+      const result = await AITaskPrioritizer.prioritizeTasks(tasks);
+      
+      // Update tasks with new priorities
+      const updatedTasks = tasks.map(task => {
+        const prioritizedTask = result.prioritizedTasks.find(p => p.taskId === task.taskId);
+        if (prioritizedTask) {
+          return { ...task, priority: prioritizedTask.priority };
+        }
+        return task;
+      });
+
+      // Sort by suggested order
+      const sortedTasks = updatedTasks.sort((a, b) => {
+        const priorityA = result.prioritizedTasks.find(p => p.taskId === a.taskId);
+        const priorityB = result.prioritizedTasks.find(p => p.taskId === b.taskId);
+        return (priorityA?.suggestedOrder || 999) - (priorityB?.suggestedOrder || 999);
+      });
+
+      setTasks(sortedTasks);
+      
+      // Save updated tasks
+      for (const task of updatedTasks) {
+        await StorageService.updateTask(task.taskId, { priority: task.priority });
+      }
+
+    } catch (error) {
+      console.error('AI prioritization error:', error);
+      setError('Failed to prioritize tasks with AI');
+    } finally {
+      setShowAIPrioritization(false);
+    }
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'voice':
@@ -62,12 +128,22 @@ export default function HomePage() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-white">Your Tasks</h2>
-              <button
-                onClick={() => setCurrentView('voice')}
-                className="glass-button px-4 py-2 text-white text-sm font-medium"
-              >
-                Add Task
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAIPrioritization}
+                  disabled={showAIPrioritization || tasks.length === 0}
+                  className="glass-button px-4 py-2 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {showAIPrioritization ? 'Prioritizing...' : 'AI Prioritize'}
+                </button>
+                <button
+                  onClick={() => setCurrentView('voice')}
+                  className="glass-button px-4 py-2 text-white text-sm font-medium"
+                >
+                  Add Task
+                </button>
+              </div>
             </div>
             <TaskList tasks={tasks} onTasksChange={setTasks} />
           </div>
@@ -92,8 +168,31 @@ export default function HomePage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white border-opacity-20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-opacity-70">Loading SpeakEasy Tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            color: 'white',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+          },
+        }}
+      />
+      
       {/* Header */}
       <header className="glass-card mx-4 mt-4 p-4">
         <div className="flex items-center justify-between">
@@ -103,7 +202,9 @@ export default function HomePage() {
             </div>
             <div>
               <h1 className="text-lg font-semibold text-white">SpeakEasy Tasks</h1>
-              <p className="text-sm text-white text-opacity-70">Voice-powered productivity</p>
+              <p className="text-sm text-white text-opacity-70">
+                Voice-powered productivity {StorageService.isUsingSupabase() ? '• Cloud Storage' : '• Local Storage'}
+              </p>
             </div>
           </div>
           

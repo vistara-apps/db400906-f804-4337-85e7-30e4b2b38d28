@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from 'react';
 import { MicButton } from './MicButton';
-import { transcribeAudio, parseVoiceInput } from '@/lib/openai';
-import { LocalStorage } from '@/lib/storage';
+import { StorageService } from '@/lib/storage';
+import { ContextualReminderService } from '@/lib/reminders';
 import { generateId } from '@/lib/utils';
 import { Task, CalendarEvent, ParsedVoiceInput } from '@/lib/types';
+import toast from 'react-hot-toast';
 
 interface VoiceInputProps {
   onTaskAdded?: (task: Task) => void;
@@ -24,19 +25,43 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
     setLastResult(null);
 
     try {
-      // Step 1: Transcribe audio
-      const transcribedText = await transcribeAudio(audioBlob);
+      // Step 1: Transcribe audio using API route
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'audio.webm');
+
+      const transcribeResponse = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!transcribeResponse.ok) {
+        throw new Error('Failed to transcribe audio');
+      }
+
+      const { transcription: transcribedText } = await transcribeResponse.json();
       setTranscription(transcribedText);
 
-      // Step 2: Parse the transcription
-      const parsed = await parseVoiceInput(transcribedText);
+      // Step 2: Parse the transcription using API route
+      const parseResponse = await fetch('/api/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transcription: transcribedText }),
+      });
+
+      if (!parseResponse.ok) {
+        throw new Error('Failed to parse voice input');
+      }
+
+      const { parsed } = await parseResponse.json();
       setLastResult(parsed);
 
-      // Step 3: Create task or event
+      // Step 3: Create task or event with enhanced storage
       if (parsed.type === 'task') {
         const task: Task = {
           taskId: generateId(),
-          userId: 'demo-user', // In production, get from auth
+          userId: StorageService.getCurrentUserId(),
           description: parsed.title,
           isCompleted: false,
           createdAt: new Date(),
@@ -44,12 +69,17 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
           priority: parsed.priority || 'medium',
         };
 
-        LocalStorage.addTask(task);
-        onTaskAdded?.(task);
+        const savedTask = await StorageService.addTask(task);
+        if (savedTask) {
+          // Create contextual reminders for the task
+          await ContextualReminderService.createTaskReminders(savedTask);
+          onTaskAdded?.(savedTask);
+          toast.success('Task created successfully!');
+        }
       } else if (parsed.type === 'event') {
         const event: CalendarEvent = {
           eventId: generateId(),
-          userId: 'demo-user', // In production, get from auth
+          userId: StorageService.getCurrentUserId(),
           title: parsed.title,
           startTime: parsed.startTime ? new Date(parsed.startTime) : new Date(),
           endTime: parsed.endTime ? new Date(parsed.endTime) : new Date(Date.now() + 60 * 60 * 1000), // Default 1 hour
@@ -57,12 +87,19 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
           notes: parsed.description,
         };
 
-        LocalStorage.addEvent(event);
-        onEventAdded?.(event);
+        const savedEvent = await StorageService.addEvent(event);
+        if (savedEvent) {
+          // Create contextual reminders for the event
+          await ContextualReminderService.createEventReminders(savedEvent);
+          onEventAdded?.(savedEvent);
+          toast.success('Event created successfully!');
+        }
       }
     } catch (error) {
       console.error('Voice processing error:', error);
-      onError?.(error instanceof Error ? error.message : 'Failed to process voice input');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process voice input';
+      onError?.(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

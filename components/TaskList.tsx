@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { TaskListItem } from './TaskListItem';
 import { Task } from '@/lib/types';
-import { LocalStorage } from '@/lib/storage';
+import { StorageService } from '@/lib/storage';
 
 interface TaskListProps {
   tasks: Task[];
@@ -11,11 +11,11 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, onTasksChange }: TaskListProps) {
-  const handleToggleComplete = (taskId: string) => {
+  const handleToggleComplete = async (taskId: string) => {
     const task = tasks.find(t => t.taskId === taskId);
     if (task) {
       const updatedTask = { ...task, isCompleted: !task.isCompleted };
-      LocalStorage.updateTask(taskId, { isCompleted: !task.isCompleted });
+      await StorageService.updateTask(taskId, { isCompleted: !task.isCompleted });
       
       const updatedTasks = tasks.map(t => 
         t.taskId === taskId ? updatedTask : t
@@ -24,8 +24,8 @@ export function TaskList({ tasks, onTasksChange }: TaskListProps) {
     }
   };
 
-  const handleDelete = (taskId: string) => {
-    LocalStorage.deleteTask(taskId);
+  const handleDelete = async (taskId: string) => {
+    await StorageService.deleteTask(taskId);
     const updatedTasks = tasks.filter(t => t.taskId !== taskId);
     onTasksChange(updatedTasks);
   };
