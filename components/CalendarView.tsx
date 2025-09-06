@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CalendarEventCard } from './CalendarEventCard';
 import { CalendarEvent } from '@/lib/types';
-import { LocalStorage } from '@/lib/storage';
+import { StorageService } from '@/lib/storage';
 import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
 
 interface CalendarViewProps {
@@ -12,8 +12,8 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ events, onEventsChange }: CalendarViewProps) {
-  const handleDelete = (eventId: string) => {
-    LocalStorage.deleteEvent(eventId);
+  const handleDelete = async (eventId: string) => {
+    await StorageService.deleteEvent(eventId);
     const updatedEvents = events.filter(e => e.eventId !== eventId);
     onEventsChange(updatedEvents);
   };
