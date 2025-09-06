@@ -1,8 +1,7 @@
 import OpenAI from 'openai';
-import { ParsedVoiceInput } from './types';
 
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
+  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '',
   baseURL: "https://openrouter.ai/api/v1",
   dangerouslyAllowBrowser: true,
 });
@@ -25,7 +24,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   }
 }
 
-export async function parseVoiceInput(transcription: string): Promise<ParsedVoiceInput> {
+export async function parseVoiceInput(transcription: string) {
   try {
     const prompt = `
 Parse the following voice input and extract task or event information. Return a JSON object with the following structure:
@@ -43,12 +42,11 @@ Parse the following voice input and extract task or event information. Return a 
 
 Voice input: "${transcription}"
 
-Guidelines:
-- If it mentions scheduling, meetings, appointments, or specific times, classify as "event"
-- If it's about tasks, reminders, or to-dos, classify as "task"
-- Extract dates and times relative to today
-- Infer priority from urgency words (urgent=high, important=medium, later=low)
-- Keep titles concise but descriptive
+If it's a task (like "remind me to...", "I need to...", "don't forget to..."), set type to "task".
+If it's an event (like "schedule a meeting...", "appointment at...", "call at..."), set type to "event".
+
+Extract dates and times naturally. If no specific time is mentioned, don't include time fields.
+For priority, infer from urgency words like "urgent", "important", "ASAP" (high), "when I have time", "eventually" (low).
 `;
 
     const response = await openai.chat.completions.create({
@@ -56,7 +54,7 @@ Guidelines:
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that parses voice input into structured task and event data. Always respond with valid JSON.'
+          content: 'You are a helpful assistant that parses voice input into structured task and event data. Always respond with valid JSON only.'
         },
         {
           role: 'user',
@@ -71,22 +69,9 @@ Guidelines:
       throw new Error('No response from AI');
     }
 
-    const parsed = JSON.parse(content) as ParsedVoiceInput;
-    
-    // Validate and set defaults
-    if (!parsed.type) parsed.type = 'task';
-    if (!parsed.title) parsed.title = transcription.slice(0, 50);
-    if (!parsed.priority) parsed.priority = 'medium';
-
-    return parsed;
+    return JSON.parse(content);
   } catch (error) {
     console.error('Parsing error:', error);
-    // Fallback parsing
-    return {
-      type: 'task',
-      title: transcription.slice(0, 50),
-      description: transcription,
-      priority: 'medium'
-    };
+    throw new Error('Failed to parse voice input');
   }
 }

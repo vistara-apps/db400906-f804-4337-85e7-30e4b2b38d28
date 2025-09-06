@@ -13,8 +13,8 @@ export class LocalStorage {
   static getTasks(): Task[] {
     if (typeof window === 'undefined') return [];
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.TASKS);
-      return stored ? JSON.parse(stored).map((task: any) => ({
+      const tasks = localStorage.getItem(STORAGE_KEYS.TASKS);
+      return tasks ? JSON.parse(tasks).map((task: any) => ({
         ...task,
         createdAt: new Date(task.createdAt),
         dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
@@ -52,8 +52,8 @@ export class LocalStorage {
   static getEvents(): CalendarEvent[] {
     if (typeof window === 'undefined') return [];
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.EVENTS);
-      return stored ? JSON.parse(stored).map((event: any) => ({
+      const events = localStorage.getItem(STORAGE_KEYS.EVENTS);
+      return events ? JSON.parse(events).map((event: any) => ({
         ...event,
         startTime: new Date(event.startTime),
         endTime: new Date(event.endTime),

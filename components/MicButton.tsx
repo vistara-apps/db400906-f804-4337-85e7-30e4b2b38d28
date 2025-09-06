@@ -2,41 +2,32 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
-import { VoiceRecordingState } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface MicButtonProps {
   onRecordingComplete: (audioBlob: Blob) => void;
+  onRecordingStart?: () => void;
+  onRecordingStop?: () => void;
   disabled?: boolean;
+  className?: string;
 }
 
-export function MicButton({ onRecordingComplete, disabled = false }: MicButtonProps) {
-  const [state, setState] = useState<VoiceRecordingState>({
-    isRecording: false,
-    isProcessing: false,
-    audioBlob: null,
-    transcription: '',
-    error: null,
-  });
-
+export function MicButton({
+  onRecordingComplete,
+  onRecordingStart,
+  onRecordingStop,
+  disabled = false,
+  className
+}: MicButtonProps) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   const startRecording = useCallback(async () => {
     try {
-      setState(prev => ({ ...prev, error: null }));
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        }
-      });
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -48,108 +39,77 @@ export function MicButton({ onRecordingComplete, disabled = false }: MicButtonPr
 
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        setState(prev => ({ 
-          ...prev, 
-          isRecording: false, 
-          audioBlob,
-          isProcessing: true 
-        }));
         onRecordingComplete(audioBlob);
         
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
+        setIsProcessing(false);
       };
 
-      mediaRecorder.start(100); // Collect data every 100ms
-      setState(prev => ({ ...prev, isRecording: true }));
-
+      mediaRecorder.start();
+      setIsRecording(true);
+      onRecordingStart?.();
     } catch (error) {
       console.error('Error starting recording:', error);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Failed to access microphone. Please check permissions.' 
-      }));
+      alert('Could not access microphone. Please check permissions.');
     }
-  }, [onRecordingComplete]);
+  }, [onRecordingComplete, onRecordingStart]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && state.isRecording) {
+    if (mediaRecorderRef.current && isRecording) {
+      setIsProcessing(true);
       mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      onRecordingStop?.();
     }
-  }, [state.isRecording]);
+  }, [isRecording, onRecordingStop]);
 
   const handleClick = useCallback(() => {
-    if (disabled) return;
+    if (disabled || isProcessing) return;
     
-    if (state.isRecording) {
+    if (isRecording) {
       stopRecording();
     } else {
       startRecording();
     }
-  }, [disabled, state.isRecording, startRecording, stopRecording]);
+  }, [disabled, isProcessing, isRecording, startRecording, stopRecording]);
 
-  const getButtonContent = () => {
-    if (state.isProcessing) {
-      return <Loader2 className="w-8 h-8 animate-spin" />;
-    }
-    if (state.isRecording) {
-      return <MicOff className="w-8 h-8" />;
-    }
-    return <Mic className="w-8 h-8" />;
+  const getButtonState = () => {
+    if (isProcessing) return 'processing';
+    if (isRecording) return 'listening';
+    return 'idle';
   };
 
-  const getButtonClass = () => {
-    let baseClass = 'mic-button';
-    if (state.isRecording) {
-      baseClass += ' listening';
-    }
-    if (disabled || state.isProcessing) {
-      baseClass += ' opacity-50 cursor-not-allowed';
-    }
-    return baseClass;
-  };
+  const buttonState = getButtonState();
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <button
-        onClick={handleClick}
-        disabled={disabled || state.isProcessing}
-        className={getButtonClass()}
-        aria-label={state.isRecording ? 'Stop recording' : 'Start recording'}
-      >
-        {getButtonContent()}
-      </button>
-      
-      {state.isRecording && (
-        <div className="text-center">
-          <p className="text-sm text-white opacity-80 animate-pulse">
-            Recording... Tap to stop
-          </p>
-          <div className="flex justify-center mt-2">
-            <div className="flex space-x-1">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2 h-2 bg-white rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+    <button
+      onClick={handleClick}
+      disabled={disabled || isProcessing}
+      className={cn(
+        'mic-button',
+        {
+          'listening': buttonState === 'listening',
+          'opacity-50 cursor-not-allowed': disabled,
+          'animate-pulse': buttonState === 'processing',
+        },
+        className
       )}
-      
-      {state.isProcessing && (
-        <p className="text-sm text-white opacity-80">
-          Processing your voice...
-        </p>
+      aria-label={
+        buttonState === 'listening' 
+          ? 'Stop recording' 
+          : buttonState === 'processing'
+          ? 'Processing...'
+          : 'Start recording'
+      }
+    >
+      {buttonState === 'processing' ? (
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      ) : buttonState === 'listening' ? (
+        <MicOff className="w-8 h-8 text-white" />
+      ) : (
+        <Mic className="w-8 h-8 text-white" />
       )}
-      
-      {state.error && (
-        <p className="text-sm text-red-300 text-center max-w-xs">
-          {state.error}
-        </p>
-      )}
-    </div>
+    </button>
   );
 }

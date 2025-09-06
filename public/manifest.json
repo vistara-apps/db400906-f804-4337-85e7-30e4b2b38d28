@@ -1,0 +1,14 @@
+{
+  "name": "SpeakEasy Tasks",
+  "description": "SpeakEasy Tasks is a Base Mini App built with Zara.",
+  "image": "https://dummyimage.com/1200x628/0a0b0d/ffffff.png&text=OG",
+  "external_url": "https://db400906-f804-4337-85e7-30e4b2b38d28.vercel.app",
+  "properties": {
+    "app": {
+      "name": "SpeakEasy Tasks",
+      "description": "SpeakEasy Tasks is a Base Mini App built with Zara.",
+      "url": "https://db400906-f804-4337-85e7-30e4b2b38d28.vercel.app",
+      "icon": "https://0co.to/images/zara-2.png"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# SpeakEasy Tasks - Voice-Powered Task Management
+# SpeakEasy Tasks
 
 A Base Mini App that transforms your voice into organized to-do lists and calendar events using AI-powered transcription and natural language processing.
 
@@ -6,116 +6,128 @@ A Base Mini App that transforms your voice into organized to-do lists and calend
 
 - **Voice-to-Task Conversion**: Speak your tasks and watch them become organized to-do items
 - **Voice-to-Calendar Events**: Schedule appointments and meetings by speaking naturally
-- **AI-Powered Parsing**: Intelligent extraction of dates, times, priorities, and locations
-- **Beautiful UI**: Gradient backgrounds with floating elements and glass morphism design
+- **Smart AI Parsing**: Automatically extracts dates, times, priorities, and locations from speech
+- **Beautiful UI**: Gradient glass-morphism design with smooth animations
 - **Base Integration**: Built as a Base Mini App with OnchainKit integration
-- **Real-time Updates**: Instant task and event management with smooth animations
+- **Real-time Updates**: Instant feedback and task/event creation
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15 with App Router, React 18, TypeScript
-- **Styling**: Tailwind CSS with custom design system
-- **Voice Processing**: OpenAI Whisper API for transcription
-- **AI Parsing**: OpenAI GPT for natural language understanding
+- **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS
 - **Blockchain**: Base network integration via OnchainKit
-- **Storage**: LocalStorage (demo) - ready for Supabase integration
+- **AI**: OpenAI Whisper for transcription, GPT for natural language processing
+- **Storage**: LocalStorage (demo) - easily extensible to Supabase
+- **Voice**: Web Audio API for recording
 
 ## Getting Started
 
-1. **Clone and Install**:
+1. **Clone and Install**
    ```bash
    git clone <repository-url>
    cd speakeasy-tasks
    npm install
    ```
 
-2. **Environment Setup**:
-   Copy `.env.local` and add your API keys:
+2. **Environment Setup**
    ```bash
-   NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key
-   NEXT_PUBLIC_ONCHAINKIT_API_KEY=your_onchainkit_api_key
+   cp .env.example .env.local
    ```
+   
+   Add your API keys:
+   - `NEXT_PUBLIC_OPENAI_API_KEY` or `NEXT_PUBLIC_OPENROUTER_API_KEY`
+   - `NEXT_PUBLIC_ONCHAINKIT_API_KEY`
 
-3. **Run Development Server**:
+3. **Run Development Server**
    ```bash
    npm run dev
    ```
 
-4. **Open**: Navigate to `http://localhost:3000`
+4. **Open in Browser**
+   Navigate to `http://localhost:3000`
 
 ## Usage
 
 ### Creating Tasks
 - Click the microphone button
-- Speak your task: "Remind me to buy groceries tomorrow at 5 PM"
-- The AI will parse and create a structured task with due date and priority
+- Say something like: "Remind me to buy groceries tomorrow at 5 PM"
+- The app will create a task with the correct due date and priority
 
-### Scheduling Events
+### Creating Events
 - Click the microphone button  
-- Speak your event: "Schedule a team meeting next Tuesday at 2 PM for 1 hour"
-- The AI will create a calendar event with proper timing
+- Say something like: "Schedule a meeting with John next Tuesday at 2 PM"
+- The app will create a calendar event with the specified time
 
 ### Managing Items
-- Toggle task completion with the check button
-- Delete tasks and events with the trash button
-- Switch between Tasks and Events tabs
-- View completion statistics
+- View all tasks in the Tasks tab
+- Check off completed tasks
+- View upcoming events in the Calendar tab
+- Delete items by hovering and clicking the trash icon
 
-## Voice Input Examples
+## Voice Commands Examples
 
-**Tasks**:
-- "Buy milk on the way home"
-- "Call the dentist tomorrow morning - urgent"
-- "Finish the project report by Friday"
+### Tasks
+- "Remind me to call mom tonight"
+- "I need to finish the project report by Friday"
+- "Don't forget to take out the trash tomorrow morning"
+- "Buy milk and eggs when I have time" (low priority)
+- "URGENT: Submit the proposal by 3 PM today" (high priority)
 
-**Events**:
-- "Meeting with Sarah next Monday at 3 PM"
-- "Doctor appointment Thursday at 10 AM for 30 minutes"
-- "Team lunch at the Italian restaurant downtown at noon"
+### Events
+- "Schedule a dentist appointment next Monday at 10 AM"
+- "Meeting with the team tomorrow at 2 PM in the conference room"
+- "Lunch with Sarah on Friday at noon at the Italian restaurant"
+- "Call with client at 4 PM today"
 
 ## Architecture
 
 ### Components
-- `MicButton`: Voice recording with visual feedback
-- `TaskListItem`: Individual task display and management
-- `CalendarEventCard`: Event display with timing and location
-- `FloatingElements`: Animated background elements
+- `VoiceInput`: Main voice recording and processing component
+- `MicButton`: Animated microphone button with recording states
+- `TaskListItem`: Individual task display with completion and deletion
+- `CalendarEventCard`: Event display with time and location info
+- `TaskList`: Task management and organization
+- `CalendarView`: Calendar event organization by time periods
 
 ### Data Flow
-1. Voice recording → Audio blob
-2. OpenAI Whisper → Text transcription
-3. OpenAI GPT → Structured data parsing
-4. LocalStorage → Data persistence
-5. React state → UI updates
+1. User speaks into microphone
+2. Audio is recorded using Web Audio API
+3. Audio is transcribed using OpenAI Whisper
+4. Transcription is parsed using GPT to extract structured data
+5. Task or event is created and stored
+6. UI updates to show the new item
 
-### AI Processing
-The app uses a two-step AI process:
-1. **Transcription**: Convert speech to text using Whisper
-2. **Parsing**: Extract structured data (dates, priorities, locations) using GPT
+### Storage
+- **Demo**: LocalStorage for immediate functionality
+- **Production Ready**: Easily extensible to Supabase or other backends
+- **Future**: On-chain storage for decentralized task management
 
 ## Customization
 
 ### Design System
 The app uses a comprehensive design system with:
 - **Colors**: Purple/pink gradients with glass morphism
-- **Spacing**: Consistent spacing scale (sm: 4px, md: 8px, lg: 16px, xl: 24px)
-- **Typography**: Clear hierarchy with gradient text effects
+- **Typography**: Clean, readable fonts with proper hierarchy
 - **Animations**: Smooth transitions and floating elements
+- **Responsive**: Mobile-first design
 
 ### Extending Functionality
-- **Backend Integration**: Replace LocalStorage with Supabase
-- **Smart Contracts**: Add tokenized task rewards
-- **Notifications**: Implement contextual reminders
-- **Collaboration**: Add shared task lists
+- Add more AI providers in `lib/openai.ts`
+- Implement backend storage in `lib/storage.ts`
+- Add new voice command patterns in the parsing logic
+- Integrate with external calendar services
 
 ## Deployment
 
-The app is optimized for deployment on Vercel or similar platforms:
-
+### Vercel (Recommended)
 ```bash
 npm run build
-npm start
+# Deploy to Vercel
 ```
+
+### Environment Variables for Production
+- Set all API keys in your deployment platform
+- Ensure CORS is configured for your domain
+- Test microphone permissions on HTTPS
 
 ## Contributing
 
@@ -127,4 +139,15 @@ npm start
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see LICENSE file for details
+
+## Support
+
+For issues and questions:
+- Check the GitHub issues
+- Review the documentation
+- Test with different browsers for microphone compatibility
+
+---
+
+Built with ❤️ on Base

@@ -1,295 +1,178 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
-import { Header } from '@/components/Header';
-import { MicButton } from '@/components/MicButton';
-import { TaskListItem } from '@/components/TaskListItem';
-import { CalendarEventCard } from '@/components/CalendarEventCard';
-import { FloatingElements } from '@/components/FloatingElements';
-import { Task, CalendarEvent, ParsedVoiceInput } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { CheckSquare, Calendar, Settings2, User } from 'lucide-react';
+import { VoiceInput } from '@/components/VoiceInput';
+import { TaskList } from '@/components/TaskList';
+import { CalendarView } from '@/components/CalendarView';
+import { Task, CalendarEvent } from '@/lib/types';
 import { LocalStorage } from '@/lib/storage';
-import { transcribeAudio, parseVoiceInput } from '@/lib/openai';
-import { generateId } from '@/lib/utils';
-import { Calendar, CheckSquare, Sparkles } from 'lucide-react';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
+import { Name, Avatar } from '@coinbase/onchainkit/identity';
+
+type ViewMode = 'voice' | 'tasks' | 'calendar';
 
 export default function HomePage() {
-  const { setFrameReady } = useMiniKit();
+  const [currentView, setCurrentView] = useState<ViewMode>('voice');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [lastTranscription, setLastTranscription] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'tasks' | 'calendar'>('tasks');
+  const [error, setError] = useState<string | null>(null);
+  const { setFrameReady } = useMiniKit();
 
-  // Initialize MiniKit
   useEffect(() => {
     setFrameReady();
   }, [setFrameReady]);
 
-  // Load data from localStorage
   useEffect(() => {
+    // Load data from localStorage on mount
     setTasks(LocalStorage.getTasks());
     setEvents(LocalStorage.getEvents());
   }, []);
 
-  const handleRecordingComplete = useCallback(async (audioBlob: Blob) => {
-    setIsProcessing(true);
-    
-    try {
-      // Transcribe audio
-      const transcription = await transcribeAudio(audioBlob);
-      setLastTranscription(transcription);
-      
-      // Parse the transcription
-      const parsed = await parseVoiceInput(transcription);
-      
-      // Create task or event based on parsed input
-      if (parsed.type === 'task') {
-        const newTask: Task = {
-          taskId: generateId(),
-          userId: 'demo-user', // In production, get from wallet/auth
-          description: parsed.title,
-          isCompleted: false,
-          createdAt: new Date(),
-          dueDate: parsed.dueDate,
-          priority: parsed.priority || 'medium',
-        };
-        
-        LocalStorage.addTask(newTask);
-        setTasks(LocalStorage.getTasks());
-      } else if (parsed.type === 'event') {
-        const newEvent: CalendarEvent = {
-          eventId: generateId(),
-          userId: 'demo-user', // In production, get from wallet/auth
-          title: parsed.title,
-          startTime: parsed.startTime || new Date(),
-          endTime: parsed.endTime || new Date(Date.now() + 60 * 60 * 1000), // Default 1 hour
-          location: parsed.location,
-          notes: parsed.description,
-        };
-        
-        LocalStorage.addEvent(newEvent);
-        setEvents(LocalStorage.getEvents());
-      }
-      
-    } catch (error) {
-      console.error('Error processing voice input:', error);
-    } finally {
-      setIsProcessing(false);
+  const handleTaskAdded = (task: Task) => {
+    setTasks(prev => [...prev, task]);
+    // Auto-switch to tasks view to show the new task
+    setTimeout(() => setCurrentView('tasks'), 1000);
+  };
+
+  const handleEventAdded = (event: CalendarEvent) => {
+    setEvents(prev => [...prev, event]);
+    // Auto-switch to calendar view to show the new event
+    setTimeout(() => setCurrentView('calendar'), 1000);
+  };
+
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    setTimeout(() => setError(null), 5000);
+  };
+
+  const renderContent = () => {
+    switch (currentView) {
+      case 'voice':
+        return (
+          <VoiceInput
+            onTaskAdded={handleTaskAdded}
+            onEventAdded={handleEventAdded}
+            onError={handleError}
+          />
+        );
+      case 'tasks':
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Your Tasks</h2>
+              <button
+                onClick={() => setCurrentView('voice')}
+                className="glass-button px-4 py-2 text-white text-sm font-medium"
+              >
+                Add Task
+              </button>
+            </div>
+            <TaskList tasks={tasks} onTasksChange={setTasks} />
+          </div>
+        );
+      case 'calendar':
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Your Calendar</h2>
+              <button
+                onClick={() => setCurrentView('voice')}
+                className="glass-button px-4 py-2 text-white text-sm font-medium"
+              >
+                Add Event
+              </button>
+            </div>
+            <CalendarView events={events} onEventsChange={setEvents} />
+          </div>
+        );
+      default:
+        return null;
     }
-  }, []);
-
-  const handleToggleTaskComplete = useCallback((taskId: string) => {
-    const task = tasks.find(t => t.taskId === taskId);
-    if (task) {
-      LocalStorage.updateTask(taskId, { isCompleted: !task.isCompleted });
-      setTasks(LocalStorage.getTasks());
-    }
-  }, [tasks]);
-
-  const handleDeleteTask = useCallback((taskId: string) => {
-    LocalStorage.deleteTask(taskId);
-    setTasks(LocalStorage.getTasks());
-  }, []);
-
-  const handleDeleteEvent = useCallback((eventId: string) => {
-    LocalStorage.deleteEvent(eventId);
-    setEvents(LocalStorage.getEvents());
-  }, []);
-
-  const incompleteTasks = tasks.filter(task => !task.isCompleted);
-  const completedTasks = tasks.filter(task => task.isCompleted);
-  const upcomingEvents = events
-    .filter(event => event.startTime > new Date())
-    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  };
 
   return (
-    <div className="min-h-screen relative">
-      <FloatingElements />
-      
-      <div className="relative z-10">
-        <Header />
-        
-        <main className="max-w-4xl mx-auto px-4 pb-8">
-          {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Turn Your Voice Into Action
-            </h2>
-            <p className="text-xl text-white opacity-80 mb-8">
-              Speak your tasks and events - let AI organize your life
-            </p>
-            
-            <MicButton 
-              onRecordingComplete={handleRecordingComplete}
-              disabled={isProcessing}
-            />
-            
-            {lastTranscription && (
-              <div className="mt-6 glass-card p-4 max-w-md mx-auto">
-                <p className="text-sm text-gray-300 mb-2">Last transcription:</p>
-                <p className="text-white italic">"{lastTranscription}"</p>
-              </div>
-            )}
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex justify-center mb-8">
-            <div className="glass-card p-1 flex rounded-lg">
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className={`px-6 py-2 rounded-md transition-all duration-200 flex items-center space-x-2 ${
-                  activeTab === 'tasks' 
-                    ? 'bg-white bg-opacity-20 text-white' 
-                    : 'text-white opacity-60 hover:opacity-80'
-                }`}
-              >
-                <CheckSquare className="w-4 h-4" />
-                <span>Tasks ({incompleteTasks.length})</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('calendar')}
-                className={`px-6 py-2 rounded-md transition-all duration-200 flex items-center space-x-2 ${
-                  activeTab === 'calendar' 
-                    ? 'bg-white bg-opacity-20 text-white' 
-                    : 'text-white opacity-60 hover:opacity-80'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Events ({upcomingEvents.length})</span>
-              </button>
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="glass-card mx-4 mt-4 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-white">SpeakEasy Tasks</h1>
+              <p className="text-sm text-white text-opacity-70">Voice-powered productivity</p>
             </div>
           </div>
+          
+          <Wallet>
+            <ConnectWallet>
+              <Avatar className="h-6 w-6" />
+              <Name />
+            </ConnectWallet>
+          </Wallet>
+        </div>
+      </header>
 
-          {/* Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {activeTab === 'tasks' ? (
-              <>
-                {/* Active Tasks */}
-                <div className="space-y-6">
-                  <div className="flex items-center space-x-2">
-                    <CheckSquare className="w-5 h-5 text-white" />
-                    <h3 className="text-xl font-semibold text-white">Active Tasks</h3>
-                    {incompleteTasks.length > 0 && (
-                      <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
-                        {incompleteTasks.length}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {incompleteTasks.length === 0 ? (
-                    <div className="glass-card p-8 text-center">
-                      <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-                      <p className="text-white opacity-60">
-                        No active tasks. Speak to create your first task!
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {incompleteTasks.map(task => (
-                        <TaskListItem
-                          key={task.taskId}
-                          task={task}
-                          onToggleComplete={handleToggleTaskComplete}
-                          onDelete={handleDeleteTask}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+      {/* Navigation */}
+      <nav className="glass-card mx-4 mt-4 p-2">
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentView('voice')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              currentView === 'voice'
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
+            }`}
+          >
+            <Settings2 className="w-4 h-4" />
+            Voice
+          </button>
+          
+          <button
+            onClick={() => setCurrentView('tasks')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              currentView === 'tasks'
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
+            }`}
+          >
+            <CheckSquare className="w-4 h-4" />
+            Tasks ({tasks.filter(t => !t.isCompleted).length})
+          </button>
+          
+          <button
+            onClick={() => setCurrentView('calendar')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              currentView === 'calendar'
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Calendar ({events.length})
+          </button>
+        </div>
+      </nav>
 
-                {/* Completed Tasks */}
-                <div className="space-y-6">
-                  <div className="flex items-center space-x-2">
-                    <CheckSquare className="w-5 h-5 text-green-400" />
-                    <h3 className="text-xl font-semibold text-white">Completed</h3>
-                    {completedTasks.length > 0 && (
-                      <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                        {completedTasks.length}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {completedTasks.length === 0 ? (
-                    <div className="glass-card p-8 text-center">
-                      <p className="text-white opacity-60">
-                        Completed tasks will appear here
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {completedTasks.map(task => (
-                        <TaskListItem
-                          key={task.taskId}
-                          task={task}
-                          onToggleComplete={handleToggleTaskComplete}
-                          onDelete={handleDeleteTask}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Upcoming Events */}
-                <div className="space-y-6 lg:col-span-2">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-5 h-5 text-white" />
-                    <h3 className="text-xl font-semibold text-white">Upcoming Events</h3>
-                    {upcomingEvents.length > 0 && (
-                      <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                        {upcomingEvents.length}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {upcomingEvents.length === 0 ? (
-                    <div className="glass-card p-8 text-center">
-                      <Calendar className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-white opacity-60">
-                        No upcoming events. Speak to schedule your first event!
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {upcomingEvents.map(event => (
-                        <CalendarEventCard
-                          key={event.eventId}
-                          event={event}
-                          onDelete={handleDeleteEvent}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+      {/* Error Display */}
+      {error && (
+        <div className="mx-4 mt-4 p-4 bg-red-500 bg-opacity-20 border border-red-500 border-opacity-30 rounded-lg">
+          <p className="text-red-200 text-sm">{error}</p>
+        </div>
+      )}
 
-          {/* Quick Stats */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-card p-6 text-center">
-              <div className="text-3xl font-bold text-white mb-2">
-                {tasks.length}
-              </div>
-              <div className="text-white opacity-60">Total Tasks</div>
-            </div>
-            <div className="glass-card p-6 text-center">
-              <div className="text-3xl font-bold text-green-400 mb-2">
-                {completedTasks.length}
-              </div>
-              <div className="text-white opacity-60">Completed</div>
-            </div>
-            <div className="glass-card p-6 text-center">
-              <div className="text-3xl font-bold text-blue-400 mb-2">
-                {events.length}
-              </div>
-              <div className="text-white opacity-60">Events</div>
-            </div>
-          </div>
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto px-4 py-8">
+        {renderContent()}
+      </main>
+
+      {/* Footer */}
+      <footer className="text-center py-8 text-white text-opacity-50 text-sm">
+        <p>Built on Base • Powered by AI</p>
+      </footer>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, MapPin, Trash2, Clock } from 'lucide-react';
+import { Calendar, Clock, MapPin, Trash2 } from 'lucide-react';
 import { CalendarEvent } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 
 interface CalendarEventCardProps {
   event: CalendarEvent;
@@ -11,68 +11,77 @@ interface CalendarEventCardProps {
   variant?: 'day' | 'upcoming';
 }
 
-export function CalendarEventCard({ event, onDelete, variant = 'upcoming' }: CalendarEventCardProps) {
+export function CalendarEventCard({
+  event,
+  onDelete,
+  variant = 'upcoming'
+}: CalendarEventCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    await new Promise(resolve => setTimeout(resolve, 300)); // Animation delay
+    await new Promise(resolve => setTimeout(resolve, 200));
     onDelete(event.eventId);
   };
 
-  const duration = event.endTime.getTime() - event.startTime.getTime();
-  const durationMinutes = Math.round(duration / (1000 * 60));
-  const durationText = durationMinutes >= 60 
-    ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
-    : `${durationMinutes}m`;
+  const isToday = new Date(event.startTime).toDateString() === new Date().toDateString();
+  const isPast = new Date(event.endTime) < new Date();
 
   return (
-    <div className={`calendar-event ${isDeleting ? 'opacity-0 scale-95' : ''} transition-all duration-300`}>
-      <div className="flex items-start space-x-3">
-        {/* Event indicator */}
-        <div className="w-3 h-3 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
-        
-        {/* Event content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="text-white font-medium">
-                {event.title}
-              </h3>
-              
-              <div className="flex items-center mt-1 text-sm text-gray-300">
-                <Calendar className="w-4 h-4 mr-1" />
-                <span>{formatDate(event.startTime)}</span>
-                <Clock className="w-4 h-4 ml-3 mr-1" />
-                <span>{durationText}</span>
-              </div>
-              
-              {event.location && (
-                <div className="flex items-center mt-1 text-sm text-gray-400">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  <span>{event.location}</span>
-                </div>
-              )}
-              
-              {event.notes && (
-                <p className="text-sm text-gray-400 mt-2">
-                  {event.notes}
-                </p>
-              )}
-            </div>
-            
-            {/* Actions */}
-            <div className="flex items-center space-x-2 ml-4">
-              <button
-                onClick={handleDelete}
-                className="p-1 rounded-full bg-white bg-opacity-20 text-white hover:bg-red-500 hover:bg-opacity-100 transition-colors duration-200"
-                aria-label="Delete event"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+    <div
+      className={cn(
+        'calendar-event group',
+        {
+          'opacity-60': isPast,
+          'border-l-4 border-blue-500': isToday && !isPast,
+          'animate-pulse': isDeleting,
+        }
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+          <Calendar className="w-5 h-5 text-white" />
         </div>
+
+        <div className="flex-1 min-w-0">
+          <h3 className={cn(
+            'text-white font-medium',
+            isPast && 'line-through opacity-60'
+          )}>
+            {event.title}
+          </h3>
+
+          <div className="flex items-center gap-1 mt-1 text-sm text-white text-opacity-70">
+            <Clock className="w-4 h-4" />
+            <span>
+              {formatDate(event.startTime)}
+              {event.endTime && event.startTime.toDateString() === event.endTime.toDateString() && (
+                ` - ${event.endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+              )}
+            </span>
+          </div>
+
+          {event.location && (
+            <div className="flex items-center gap-1 mt-1 text-sm text-white text-opacity-70">
+              <MapPin className="w-4 h-4" />
+              <span>{event.location}</span>
+            </div>
+          )}
+
+          {event.notes && (
+            <p className="mt-2 text-sm text-white text-opacity-80">
+              {event.notes}
+            </p>
+          )}
+        </div>
+
+        <button
+          onClick={handleDelete}
+          className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-2 hover:bg-white hover:bg-opacity-10 rounded-lg transition-all duration-200"
+          aria-label="Delete event"
+        >
+          <Trash2 className="w-4 h-4 text-red-400" />
+        </button>
       </div>
     </div>
   );
