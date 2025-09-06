@@ -10,7 +10,7 @@
     "subtitle": "Built with Zara",
     "description": "SpeakEasy Tasks is a Base Mini App built with Zara.",
     "iconUrl": "https://0co.to/images/zara-2.png",
-    "homeUrl": "https://db400906f804433785e730e4b2b38d28-jh96.vercel.app",
+    "homeUrl": "https://db400906f804433785e730e4b2b38d28-mr10.vercel.app",
     "splashImageUrl": "https://db400906f804433785e730e4b2b38d28-jh96.vercel.app/splash.png",
     "splashBackgroundColor": "#000000",
     "heroImageUrl": "https://db400906f804433785e730e4b2b38d28-jh96.vercel.app/image.png",
@@ -25,6 +25,6 @@
       "miniapp",
       "onchainkit"
     ],
-    "webhookUrl": "https://db400906f804433785e730e4b2b38d28-jh96.vercel.app/api/webhook"
+    "webhookUrl": "https://db400906f804433785e730e4b2b38d28-mr10.vercel.app/api/webhook"
   }
 }
