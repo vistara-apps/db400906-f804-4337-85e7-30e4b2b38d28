@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white min-h-screen;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white bg-opacity-10 backdrop-blur-lg border border-white border-opacity-20 rounded-lg shadow-card;
+  }
+  
+  .glass-button {
+    @apply bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-30 rounded-lg hover:bg-opacity-30 transition-all duration-200;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent;
+  }
+  
+  .mic-button {
+    @apply w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer;
+  }
+  
+  .mic-button.listening {
+    @apply animate-pulse-glow;
+  }
+  
+  .task-item {
+    @apply glass-card p-4 mb-3 hover:bg-opacity-15 transition-all duration-200;
+  }
+  
+  .calendar-event {
+    @apply glass-card p-3 mb-2 hover:bg-opacity-15 transition-all duration-200;
+  }
+  
+  .floating-element {
+    @apply animate-float;
+  }
+}
