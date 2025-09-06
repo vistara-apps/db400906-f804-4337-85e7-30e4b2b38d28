@@ -24,12 +24,38 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
     setLastResult(null);
 
     try {
-      // Step 1: Transcribe audio
-      const transcribedText = await transcribeAudio(audioBlob);
+      // Step 1: Transcribe audio using API route
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      const transcribeResponse = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!transcribeResponse.ok) {
+        const errorData = await transcribeResponse.json();
+        throw new Error(errorData.error || 'Transcription failed');
+      }
+
+      const { text: transcribedText } = await transcribeResponse.json();
       setTranscription(transcribedText);
 
-      // Step 2: Parse the transcription
-      const parsed = await parseVoiceInput(transcribedText);
+      // Step 2: Parse the transcription using API route
+      const parseResponse = await fetch('/api/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: transcribedText }),
+      });
+
+      if (!parseResponse.ok) {
+        const errorData = await parseResponse.json();
+        throw new Error(errorData.error || 'Parsing failed');
+      }
+
+      const { result: parsed } = await parseResponse.json();
       setLastResult(parsed);
 
       // Step 3: Create task or event
