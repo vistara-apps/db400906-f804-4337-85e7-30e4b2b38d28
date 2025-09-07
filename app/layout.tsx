@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   description: 'Turn your voice into organized to-do lists and schedule with AI-powered transcription',
   keywords: ['voice', 'tasks', 'calendar', 'AI', 'productivity', 'Base', 'blockchain'],
   authors: [{ name: 'SpeakEasy Tasks Team' }],
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#8B5CF6',
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
@@ -29,6 +27,14 @@ export const metadata: Metadata = {
     description: 'Turn your voice into organized to-do lists and schedule with AI-powered transcription',
   },
 };
+
+export function generateViewport() {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#8B5CF6',
+  };
+}
 
 export default function RootLayout({
   children,
