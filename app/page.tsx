@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckSquare, Calendar, Settings2, User } from 'lucide-react';
+import { CheckSquare, Calendar, Settings2, User, BarChart3, Bell } from 'lucide-react';
 import { VoiceInput } from '@/components/VoiceInput';
 import { TaskList } from '@/components/TaskList';
 import { CalendarView } from '@/components/CalendarView';
+import { ProductivityInsights } from '@/components/ProductivityInsights';
+import { Settings } from '@/components/Settings';
 import { Task, CalendarEvent } from '@/lib/types';
 import { LocalStorage } from '@/lib/storage';
+import { ReminderService } from '@/lib/reminders';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { Name, Avatar } from '@coinbase/onchainkit/identity';
 
-type ViewMode = 'voice' | 'tasks' | 'calendar';
+type ViewMode = 'voice' | 'tasks' | 'calendar' | 'analytics' | 'settings';
 
 export default function HomePage() {
   const [currentView, setCurrentView] = useState<ViewMode>('voice');
@@ -28,16 +31,36 @@ export default function HomePage() {
     // Load data from localStorage on mount
     setTasks(LocalStorage.getTasks());
     setEvents(LocalStorage.getEvents());
+    
+    // Initialize reminders system
+    ReminderService.initializeReminders();
+    
+    // Request notification permission
+    ReminderService.requestNotificationPermission();
   }, []);
 
   const handleTaskAdded = (task: Task) => {
     setTasks(prev => [...prev, task]);
+    
+    // Create smart reminders for the task
+    const smartReminders = ReminderService.generateSmartReminders(task);
+    smartReminders.forEach(trigger => {
+      ReminderService.createTaskReminder(task, trigger);
+    });
+    
     // Auto-switch to tasks view to show the new task
     setTimeout(() => setCurrentView('tasks'), 1000);
   };
 
   const handleEventAdded = (event: CalendarEvent) => {
     setEvents(prev => [...prev, event]);
+    
+    // Create smart reminders for the event
+    const smartReminders = ReminderService.generateSmartReminders(event);
+    smartReminders.forEach(trigger => {
+      ReminderService.createEventReminder(event, trigger);
+    });
+    
     // Auto-switch to calendar view to show the new event
     setTimeout(() => setCurrentView('calendar'), 1000);
   };
@@ -87,6 +110,39 @@ export default function HomePage() {
             <CalendarView events={events} onEventsChange={setEvents} />
           </div>
         );
+      case 'analytics':
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Productivity Analytics</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentView('voice')}
+                  className="glass-button px-4 py-2 text-white text-sm font-medium"
+                >
+                  Add Task
+                </button>
+              </div>
+            </div>
+            <ProductivityInsights tasks={tasks} events={events} />
+          </div>
+        );
+      case 'settings':
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Settings</h2>
+            </div>
+            <Settings 
+              tasks={tasks} 
+              events={events} 
+              onDataImported={(newTasks, newEvents) => {
+                setTasks(newTasks);
+                setEvents(newEvents);
+              }}
+            />
+          </div>
+        );
       default:
         return null;
     }
@@ -118,10 +174,10 @@ export default function HomePage() {
 
       {/* Navigation */}
       <nav className="glass-card mx-4 mt-4 p-2">
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1 overflow-x-auto">
           <button
             onClick={() => setCurrentView('voice')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
               currentView === 'voice'
                 ? 'bg-white bg-opacity-20 text-white'
                 : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
@@ -133,7 +189,7 @@ export default function HomePage() {
           
           <button
             onClick={() => setCurrentView('tasks')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
               currentView === 'tasks'
                 ? 'bg-white bg-opacity-20 text-white'
                 : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
@@ -145,7 +201,7 @@ export default function HomePage() {
           
           <button
             onClick={() => setCurrentView('calendar')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
               currentView === 'calendar'
                 ? 'bg-white bg-opacity-20 text-white'
                 : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
@@ -153,6 +209,30 @@ export default function HomePage() {
           >
             <Calendar className="w-4 h-4" />
             Calendar ({events.length})
+          </button>
+
+          <button
+            onClick={() => setCurrentView('analytics')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+              currentView === 'analytics'
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Analytics
+          </button>
+
+          <button
+            onClick={() => setCurrentView('settings')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+              currentView === 'settings'
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'text-white text-opacity-70 hover:text-white hover:bg-white hover:bg-opacity-10'
+            }`}
+          >
+            <Settings2 className="w-4 h-4" />
+            Settings
           </button>
         </div>
       </nav>
