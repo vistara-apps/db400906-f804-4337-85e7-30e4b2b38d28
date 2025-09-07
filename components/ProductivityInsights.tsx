@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, Clock, Target, Lightbulb, Calendar } from 'lucide-react';
 import { Task, CalendarEvent } from '@/lib/types';
 import { TaskPrioritizationService, PrioritizedTask } from '@/lib/prioritization';
@@ -26,13 +26,7 @@ export function ProductivityInsights({ tasks, events }: ProductivityInsightsProp
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'schedule'>('overview');
 
-  useEffect(() => {
-    if (tasks.length > 0) {
-      generateAnalytics();
-    }
-  }, [tasks, events]);
-
-  const generateAnalytics = async () => {
+  const generateAnalytics = useCallback(async () => {
     setIsLoading(true);
     try {
       // Get productivity patterns
@@ -58,7 +52,13 @@ export function ProductivityInsights({ tasks, events }: ProductivityInsightsProp
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tasks]);
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      generateAnalytics();
+    }
+  }, [tasks, generateAnalytics]);
 
   if (tasks.length === 0) {
     return (
@@ -220,7 +220,7 @@ export function ProductivityInsights({ tasks, events }: ProductivityInsightsProp
       <div className="glass-card p-4">
         <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
           <Calendar className="w-5 h-5" />
-          Today's Focus ({analytics.todayTasks.length})
+          Today&apos;s Focus ({analytics.todayTasks.length})
         </h4>
         
         {analytics.todayTasks.length > 0 ? (
@@ -255,7 +255,7 @@ export function ProductivityInsights({ tasks, events }: ProductivityInsightsProp
       {analytics.tomorrowTasks.length > 0 && (
         <div className="glass-card p-4">
           <h4 className="text-lg font-semibold text-white mb-4">
-            Tomorrow's Plan ({analytics.tomorrowTasks.length})
+            Tomorrow&apos;s Plan ({analytics.tomorrowTasks.length})
           </h4>
           
           <div className="space-y-2">

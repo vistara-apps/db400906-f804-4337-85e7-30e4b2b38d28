@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   description: 'Turn your voice into organized to-do lists and schedule with AI-powered transcription',
   keywords: ['voice', 'tasks', 'calendar', 'AI', 'productivity', 'Base', 'blockchain'],
   authors: [{ name: 'SpeakEasy Tasks Team' }],
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#8B5CF6',
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
@@ -28,6 +26,12 @@ export const metadata: Metadata = {
     title: 'SpeakEasy Tasks',
     description: 'Turn your voice into organized to-do lists and schedule with AI-powered transcription',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#8B5CF6',
 };
 
 export default function RootLayout({

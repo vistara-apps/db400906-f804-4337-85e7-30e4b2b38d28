@@ -76,7 +76,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </h1>
             
             <p className="text-white text-opacity-70 mb-6">
-              We encountered an unexpected error. Don't worry, your data is safe and stored locally.
+              We encountered an unexpected error. Don&apos;t worry, your data is safe and stored locally.
             </p>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (

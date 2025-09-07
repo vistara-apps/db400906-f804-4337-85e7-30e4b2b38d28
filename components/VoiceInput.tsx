@@ -124,7 +124,7 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
         {transcription && (
           <div className="glass-card p-4 max-w-md mx-auto">
             <p className="text-sm text-white text-opacity-70 mb-2">You said:</p>
-            <p className="text-white italic">"{transcription}"</p>
+            <p className="text-white italic">&quot;{transcription}&quot;</p>
           </div>
         )}
 
