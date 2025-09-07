@@ -34,10 +34,13 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
 
       // Step 3: Create task or event
       if (parsed.type === 'task') {
+        const taskId = generateId();
         const task: Task = {
-          taskId: generateId(),
+          id: taskId,
+          taskId: taskId,
           userId: 'demo-user', // In production, get from auth
-          description: parsed.title,
+          title: parsed.title,
+          description: parsed.description || parsed.title,
           isCompleted: false,
           createdAt: new Date(),
           dueDate: parsed.dueDate ? new Date(parsed.dueDate) : undefined,
@@ -47,14 +50,17 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
         LocalStorage.addTask(task);
         onTaskAdded?.(task);
       } else if (parsed.type === 'event') {
+        const eventId = generateId();
         const event: CalendarEvent = {
-          eventId: generateId(),
+          id: eventId,
+          eventId: eventId,
           userId: 'demo-user', // In production, get from auth
           title: parsed.title,
           startTime: parsed.startTime ? new Date(parsed.startTime) : new Date(),
           endTime: parsed.endTime ? new Date(parsed.endTime) : new Date(Date.now() + 60 * 60 * 1000), // Default 1 hour
           location: parsed.location,
           notes: parsed.description,
+          priority: parsed.priority || 'medium',
         };
 
         LocalStorage.addEvent(event);
@@ -98,7 +104,7 @@ export function VoiceInput({ onTaskAdded, onEventAdded, onError }: VoiceInputPro
         {transcription && (
           <div className="glass-card p-4 max-w-md mx-auto">
             <p className="text-sm text-white text-opacity-70 mb-2">You said:</p>
-            <p className="text-white italic">"{transcription}"</p>
+            <p className="text-white italic">&quot;{transcription}&quot;</p>
           </div>
         )}
 

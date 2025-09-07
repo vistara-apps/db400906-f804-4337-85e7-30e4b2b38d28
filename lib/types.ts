@@ -5,16 +5,20 @@ export interface User {
 }
 
 export interface Task {
+  id: string;
   taskId: string;
   userId: string;
+  title: string;
   description: string;
   isCompleted: boolean;
   createdAt: Date;
   dueDate?: Date;
+  completedAt?: Date;
   priority: 'low' | 'medium' | 'high';
 }
 
 export interface CalendarEvent {
+  id: string;
   eventId: string;
   userId: string;
   title: string;
@@ -22,6 +26,7 @@ export interface CalendarEvent {
   endTime: Date;
   location?: string;
   notes?: string;
+  priority?: 'low' | 'medium' | 'high';
 }
 
 export interface Reminder {

@@ -61,7 +61,7 @@ export function TaskListItem({
               task.isCompleted && 'line-through opacity-60'
             )}
           >
-            {task.description}
+            {task.title}
           </p>
 
           <div className="flex items-center gap-4 mt-2">

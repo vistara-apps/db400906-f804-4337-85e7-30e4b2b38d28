@@ -87,4 +87,11 @@ export class LocalStorage {
     const events = this.getEvents().filter(e => e.eventId !== eventId);
     this.saveEvents(events);
   }
+
+  static clearAll(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.TASKS);
+    localStorage.removeItem(STORAGE_KEYS.EVENTS);
+    localStorage.removeItem(STORAGE_KEYS.REMINDERS);
+  }
 }
